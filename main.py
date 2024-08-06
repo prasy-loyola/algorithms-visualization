@@ -1,7 +1,7 @@
 from enum import Enum
 from random import Random
 from pyray import *
-from raylib import MOUSE_BUTTON_LEFT
+from raylib import KEY_R, MOUSE_BUTTON_LEFT
 
 
 WIDTH = 1000
@@ -59,8 +59,13 @@ editable = True
 while not window_should_close():
     if int(get_time()) % 10 == 0:
         update_state()
+
+    if is_key_down(KEY_R):
+        camera.zoom = 1.0
+        camera.offset = Vector2(0,0)
+        camera.target = Vector2(0,0)
     if get_mouse_wheel_move() != 0:
-        camera.zoom += 0.1 * get_mouse_wheel_move()
+        camera.zoom += 0.2 * get_mouse_wheel_move()
         camera.target = get_screen_to_world_2d(get_mouse_position(), camera)
         camera.offset = get_mouse_position()
     if is_mouse_button_down(MOUSE_BUTTON_LEFT):
@@ -68,11 +73,11 @@ while not window_should_close():
         camera.target = vector2_add(camera.target, delta)
     begin_drawing()
     draw_text(str(value), 10, 15, 40, BLACK)
-    if gui_button(Rectangle(60, 10, 40, 50), "+"):
-        value += 1
-    if gui_button(Rectangle(100, 10, 40, 50), "-"):
+    if gui_button(Rectangle(60, 10, 40, 50), "-"):
         value -= 1
-    if gui_button(Rectangle(130, 10, 40, 50), "Add") != 0:
+    if gui_button(Rectangle(100, 10, 40, 50), "+"):
+        value += 1
+    if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
         update_state(int(value))
 
     clear_background(GRAY)
