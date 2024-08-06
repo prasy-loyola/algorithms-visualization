@@ -1,4 +1,5 @@
 from enum import Enum
+import math
 from random import Random
 from pyray import *
 from raylib import KEY_R, MOUSE_BUTTON_LEFT
@@ -23,23 +24,58 @@ class Node(object):
         self.color: NodeColor = color
         self.left: (Node| None) = left
         self.right: (Node|None) = right
+    def depth(self) -> int:
+        if self is None:
+            return 0
+        depth = 0
+        if self.right is not None:
+            depth = self.right.depth()
+        if self.left is not None:
+            depth = max(depth, self.left.depth())
+        return depth + 1
 
-root = Node(10, NodeColor.RED)
+    def insert(self, node = None ):
+        if node is None:
+            return
+        if node.num == self.num:
+            return
+
+        if node.num < self.num:
+            if self.left is None:
+                self.left = node
+            else:
+                self.left.insert(node)
+        else:
+            if self.right is None:
+                self.right = node
+            else:
+                self.right.insert(node)
+
+
+root = None
 random = Random()
+root = Node(9)
+root.insert(Node(5))
+root.insert(Node(15))
+root.insert(Node(10))
 
 def update_state(num: (int|None) = None) -> bool:
     global root, random
     if num is not None:
-        root.left = Node(num, NodeColor.BLACK)
-        root.right = Node(num, NodeColor.BLACK)
+        if root is None:
+            root = Node(num)
+        else:
+            root.insert(Node(num))
     return num is not None and num < 50
 
 def draw_node(node: (Node|None), position: Vector2):
     if node == None:
         return
     gap = 100
-    left_position = Vector2(position.x - gap, position.y + gap)
-    right_position = Vector2(position.x + gap, position.y + gap)
+
+    depth = node.depth()
+    left_position = Vector2(position.x - (gap * depth * math.tanh(math.pi * 0.03 * depth )) , position.y + gap)
+    right_position = Vector2(position.x + (gap * depth * math.tanh(math.pi * 0.03 * depth)), position.y + gap)
 
     if node.left is not None:
         draw_line_ex(position, left_position, 2, BLUE)
