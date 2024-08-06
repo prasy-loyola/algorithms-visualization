@@ -1,15 +1,64 @@
+from enum import Enum
+from random import Random
 from pyray import *
 from raylib import MOUSE_BUTTON_LEFT
 
+
 WIDTH = 1000
 HEIGHT = 800
+FONT_SIZE = 15
+TEXTBOX_SIZE = 30
 
 init_window(WIDTH, HEIGHT, "Red Black Tree")
-
 set_target_fps(60)
 
+class NodeColor(Enum):
+    NIL = 0
+    BLACK = 1
+    RED = 2
+
+class Node(object): 
+    def __init__(self, num:int = 0, color = NodeColor.NIL, left = None, right = None) -> None:
+        self.num = num
+        self.color: NodeColor = color
+        self.left: (Node| None) = left
+        self.right: (Node|None) = right
+
+root = Node(10, NodeColor.RED)
+random = Random()
+
+def update_state(num: (int|None) = None) -> bool:
+    global root, random
+    if num is not None:
+        root.left = Node(num, NodeColor.BLACK)
+        root.right = Node(num, NodeColor.BLACK)
+    return num is not None and num < 50
+
+def draw_node(node: (Node|None), position: Vector2):
+    if node == None:
+        return
+    gap = 100
+    left_position = Vector2(position.x - gap, position.y + gap)
+    right_position = Vector2(position.x + gap, position.y + gap)
+
+    if node.left is not None:
+        draw_line_ex(position, left_position, 2, BLUE)
+    if node.right is not None:
+        draw_line_ex(position, right_position, 2, BLUE)
+    text_size = measure_text(str(node.num), FONT_SIZE)
+    node_color = RED if node.color == NodeColor.RED else BLACK
+    draw_circle(int(position.x), int(position.y), 20, node_color)
+    draw_text(str(node.num), int(position.x - text_size/2), int(position.y - FONT_SIZE/2.5), FONT_SIZE, YELLOW)
+
+    draw_node(node.left, left_position)
+    draw_node(node.right, right_position)
+
 camera = Camera2D(Vector2(0,0), Vector2(0,0), 0.0, 1.0)
+value = 0
+editable = True
 while not window_should_close():
+    if int(get_time()) % 10 == 0:
+        update_state()
     if get_mouse_wheel_move() != 0:
         camera.zoom += 0.1 * get_mouse_wheel_move()
         camera.target = get_screen_to_world_2d(get_mouse_position(), camera)
@@ -18,11 +67,18 @@ while not window_should_close():
         delta = vector2_scale(get_mouse_delta(), -1.0/camera.zoom)
         camera.target = vector2_add(camera.target, delta)
     begin_drawing()
+    draw_text(str(value), 10, 15, 40, BLACK)
+    if gui_button(Rectangle(60, 10, 40, 50), "+"):
+        value += 1
+    if gui_button(Rectangle(100, 10, 40, 50), "-"):
+        value -= 1
+    if gui_button(Rectangle(130, 10, 40, 50), "Add") != 0:
+        update_state(int(value))
 
     clear_background(GRAY)
 
     begin_mode_2d(camera)
-    draw_circle(int(WIDTH/2), int(HEIGHT/2), 20, RED)
+    draw_node(root,Vector2(int(WIDTH/2), int(HEIGHT/2)))
     end_mode_2d()
 
     end_drawing()
