@@ -2,12 +2,12 @@ from enum import Enum
 import math
 from random import Random
 from pyray import *
-from raylib import KEY_R, MOUSE_BUTTON_LEFT
+from raylib import DEFAULT, KEY_R, MOUSE_BUTTON_LEFT, TEXT_SIZE
 
 
 WIDTH = 1000
 HEIGHT = 800
-FONT_SIZE = 15
+FONT_SIZE = 20
 TEXTBOX_SIZE = 30
 
 init_window(WIDTH, HEIGHT, "Red Black Tree")
@@ -92,6 +92,7 @@ def draw_node(node: (Node|None), position: Vector2):
 camera = Camera2D(Vector2(0,0), Vector2(0,0), 0.0, 1.0)
 value = 0
 editable = True
+gui_set_style(DEFAULT, TEXT_SIZE, FONT_SIZE)
 while not window_should_close():
     if int(get_time()) % 10 == 0:
         update_state()
