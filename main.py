@@ -2,7 +2,25 @@ from enum import Enum
 import math
 from random import Random
 from pyray import *
-from raylib import DEFAULT, KEY_R, MOUSE_BUTTON_LEFT, TEXT_SIZE
+from raylib import DEFAULT, KEY_DOWN, KEY_H, KEY_R, KEY_S, KEY_UP, KEY_V, MOUSE_BUTTON_LEFT, TEXT_COLOR_NORMAL, TEXT_SIZE
+
+# "Russian violet" hex="462255" r="70" g="34" b="85" />
+# "Alice Blue" hex="e1f2fe" r="225" g="242" b="254" />
+# "Vermilion" hex="ff3c38" r="255" g="60" b="56" />
+# "Light green" hex="80ed99" r="128" g="237" b="153" />
+# "Ultra Violet" hex="5b507a" r="91" g="80" b="122" />
+
+RUSSIAN_VIOLET = Color(70,34,85,255)
+ALICE_BLUE = Color(25,42,54,255)
+VERMILION = Color(255,60,56, 255)
+LIGHT_GREEN = Color(128,237,153, 255)
+ULTRA_VIOLET = Color(91,80,122, 255)
+
+NODE_COLOR_RED = VERMILION
+NODE_COLOR_BLACK = ALICE_BLUE
+NODE_COLOR_TEXT = LIGHT_GREEN
+NODE_COLOR_LINE = RUSSIAN_VIOLET
+BACKGROUND_COLOR = ULTRA_VIOLET
 
 
 WIDTH = 1000
@@ -55,8 +73,8 @@ class Node(object):
 root = None
 random = Random()
 root = Node(9)
-root.insert(Node(5))
-root.insert(Node(15))
+root.insert(Node(5, NodeColor.RED))
+root.insert(Node(15, NodeColor.RED))
 root.insert(Node(10))
 
 def update_state(num: (int|None) = None) -> bool:
@@ -71,20 +89,20 @@ def update_state(num: (int|None) = None) -> bool:
 def draw_node(node: (Node|None), position: Vector2):
     if node == None:
         return
-    gap = 100
+    gap = 80
 
     depth = node.depth()
     left_position = Vector2(position.x - (gap * depth * math.tanh(math.pi * 0.03 * depth )) , position.y + gap)
     right_position = Vector2(position.x + (gap * depth * math.tanh(math.pi * 0.03 * depth)), position.y + gap)
 
     if node.left is not None:
-        draw_line_ex(position, left_position, 2, BLUE)
+        draw_line_ex(position, left_position, 2, NODE_COLOR_LINE)
     if node.right is not None:
-        draw_line_ex(position, right_position, 2, BLUE)
+        draw_line_ex(position, right_position, 2, NODE_COLOR_LINE)
     text_size = measure_text(str(node.num), FONT_SIZE)
-    node_color = RED if node.color == NodeColor.RED else BLACK
+    node_color = NODE_COLOR_RED if node.color == NodeColor.RED else NODE_COLOR_BLACK
     draw_circle(int(position.x), int(position.y), 20, node_color)
-    draw_text(str(node.num), int(position.x - text_size/2), int(position.y - FONT_SIZE/2.5), FONT_SIZE, YELLOW)
+    draw_text(str(node.num), int(position.x - text_size/2), int(position.y - FONT_SIZE/2.5), FONT_SIZE, NODE_COLOR_TEXT)
 
     draw_node(node.left, left_position)
     draw_node(node.right, right_position)
@@ -116,6 +134,7 @@ while not window_should_close():
         value += 1
     if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
         update_state(int(value))
+
 
     clear_background(GRAY)
 
