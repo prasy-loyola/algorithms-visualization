@@ -1,7 +1,5 @@
 from enum import Enum
 import math
-from random import Random
-from typing import Type
 from pyray import *
 from raylib import DEFAULT, KEY_R, MOUSE_BUTTON_LEFT, TEXT_SIZE
 from typing import TypeVar, Optional, Generic
@@ -80,6 +78,131 @@ class Node(Generic[T]):
             else:
                 self.right.insert_binary(node)
 
+    def __str__(self) -> str:
+        return f"""{self.num}:{self.color}->{self.parent}"""
+    
+    def rightRotate(self):
+        print(f"right rotate: {self}")
+        global root
+
+        parent = self.parent
+        left = self.left 
+        isRoot = self.parent is None
+        isRightChild = self.isRightChild()
+
+        print(f"isRoot {isRoot}")
+        if left is None: 
+            print(f"root: {root}")
+            return
+        
+        leftsRightChild = left.right
+
+
+        # Cut self and left child
+        self.right = None
+        left.parent = None
+        print(f"After cutting self {self} and right {left}")
+
+        self.parent = None
+        if parent is not None:
+            if isRightChild:
+                parent.right = None
+            else:
+                parent.left = None
+        # cut leftChild and its right child
+        left.right = None
+        if leftsRightChild is not None:
+            leftsRightChild.parent = None
+        print(f"After cutting left: {left} and left's right {leftsRightChild}")
+
+        # Setting rightsRight child to the right
+        self.left = leftsRightChild
+        if leftsRightChild is not None:
+            leftsRightChild.parent = self
+
+        print(f"After Setting self.right to leftsRightChild: {leftsRightChild} {self}")
+
+        # Set up right as parent for self
+        left.right = self
+        self.parent = left
+
+        print(f"After Setting self as lefts right, self:{self} right: {left}")
+        # Set up the rightChild with self's parent
+        if isRoot or parent is None:
+            root = left
+            print(f"root: {root}")
+            return
+        if isRightChild:
+            parent.right = left
+        else:
+            parent.left = left
+        left.parent = parent
+        
+        print(f"after all rotation left: {left}, self: {self}")
+        print(f"root: {root}")
+        self.fix_red_black()
+        
+    def leftRotate(self):
+        print(f"left rotate: {self}")
+        global root
+
+        parent = self.parent
+        right = self.right 
+        isRoot = self.parent is None
+        isRightChild = self.isRightChild()
+
+        print(f"isRoot {isRoot}")
+        if right is None: 
+            print(f"root: {root}")
+            return
+        
+        rightsLeftChild = right.left
+
+
+        # Cut self and right child
+        self.right = None
+        right.parent = None
+
+        self.parent = None
+        if parent is not None:
+            if isRightChild:
+                parent.right = None
+            else:
+                parent.left = None
+        print(f"After cutting self {self} and right {right}")
+
+        # cut rightChild and its right child
+        right.left = None
+        if rightsLeftChild is not None:
+            rightsLeftChild.parent = None
+        print(f"After cutting right {right} and right's left {rightsLeftChild}")
+
+        # Setting rightsRight child to the right
+        self.right = rightsLeftChild
+        if rightsLeftChild is not None:
+            rightsLeftChild.parent = self
+
+        print(f"Setting self.right to rightsLeftChild: {rightsLeftChild} {self}")
+
+        # Set up right as parent for self
+        right.left = self
+        self.parent = right
+
+        print(f"Setting self as right's left, self:{self} right: {right}")
+        # Set up the rightChild with self's parent
+        if isRoot or parent is None:
+            root = right
+            print(f"root: {root}")
+            return
+        if isRightChild:
+            parent.right = right
+        else:
+            parent.left = right
+        right.parent = parent
+
+        print(f"after all rotation right: {right}, self: {self}")
+        print(f"root: {root}")
+        self.fix_red_black()
 
     def isRightChild(self) -> bool:
         return self.parent is not None and self.parent.right == self
@@ -99,10 +222,10 @@ class Node(Generic[T]):
             return grandParent.right 
 
     def fix_red_black(self):
-        
+
+        print(f"fixup {self}")
         if self is None:
             return
-        print(f"fixing with z: ${self.num} color ${self.color}")
         if self.parent is None:                   # case 1: node is the root
             print("Case 1")
             self.color = NodeColor.BLACK
@@ -110,19 +233,42 @@ class Node(Generic[T]):
         if self.color == NodeColor.BLACK:
             self.parent.fix_red_black()
             return
+        elif not self.parent.color == NodeColor.RED and (self.left is None or self.left.color == NodeColor.BLACK) and (self.right is None or self.right.color == NodeColor.BLACK):
+            self.parent.fix_red_black()
+            return
 
         grandParent = self.getGrandParent()
         uncle = self.getUncle()
-        print({ 'self': self.num, 'parent': self.parent.num if self.parent is not None else None, 'uncle': uncle.num if uncle is not None else None, 'grandParent': grandParent.num if grandParent is not None else None})
+        print(f"checking conditions {self}, uncle: {uncle}")
         if uncle is not None and uncle.color == NodeColor.RED: # case 2: Uncle color is RED
             print("Case 2")
             self.parent.color = NodeColor.BLACK
             uncle.color = NodeColor.BLACK
             if grandParent is not None: 
                 grandParent.color = NodeColor.RED
-            print({ 'self': self.color, 'parent': self.parent.color, 'uncle': uncle.color if uncle is not None else None, 'grandParent': grandParent.color if grandParent is not None else None})
+            print(f"After fixing case 2 {self}, uncle: {uncle}")
             self.parent.fix_red_black()
             return
+        else:                                               # case 3: Uncle color is BLACK
+            print("Case 3")
+            if grandParent is None:
+                return
+            if not self.isRightChild() == self.parent.isRightChild(): # case 3: Uncle color is BLACK (triangle)
+                print("Triangle")
+                if self.isRightChild():
+                    self.parent.leftRotate()
+                else:
+                    self.parent.rightRotate()
+            else:
+                print("Line")
+                parent = self.parent
+                gpColor = grandParent.color
+                grandParent.color = parent.color
+                parent.color = gpColor
+                if self.isRightChild():
+                    grandParent.leftRotate()
+                else:
+                    grandParent.rightRotate()
 
     def insert(self, node: Optional['Node[T]'] = None ):
         self.insert_binary(node)
@@ -131,7 +277,9 @@ class Node(Generic[T]):
         print("\n")
 
 root = None
-root = Node(9, color=NodeColor.BLACK)
+root = Node(1, color=NodeColor.BLACK)
+for i in range(1,10):
+    root.insert(Node(i))
 
 def update_state(num: (int|None) = None):
     global root, random
@@ -140,7 +288,6 @@ def update_state(num: (int|None) = None):
             root = Node(num)
         else:
             root.insert(Node(num))
-
 
 def draw_node(node: (Node|None), position: Vector2):
     if node == None:
@@ -191,7 +338,6 @@ while not window_should_close():
     if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
         update_state(int(value))
 
-
     clear_background(GRAY)
 
     begin_mode_2d(camera)
@@ -199,6 +345,4 @@ while not window_should_close():
     end_mode_2d()
 
     end_drawing()
-
-
 
