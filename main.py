@@ -1,8 +1,10 @@
 from enum import Enum
 import math
 from random import Random
+from typing import Type
 from pyray import *
-from raylib import DEFAULT, KEY_DOWN, KEY_H, KEY_R, KEY_S, KEY_UP, KEY_V, MOUSE_BUTTON_LEFT, TEXT_COLOR_NORMAL, TEXT_SIZE
+from raylib import DEFAULT, KEY_R, MOUSE_BUTTON_LEFT, TEXT_SIZE
+from typing import TypeVar, Optional, Generic
 
 # "Russian violet" hex="462255" r="70" g="34" b="85" />
 # "Alice Blue" hex="e1f2fe" r="225" g="242" b="254" />
@@ -31,17 +33,24 @@ TEXTBOX_SIZE = 30
 init_window(WIDTH, HEIGHT, "Red Black Tree")
 set_target_fps(60)
 
+T = TypeVar('T')
 class NodeColor(Enum):
     NIL = 0
     BLACK = 1
     RED = 2
 
-class Node(object): 
-    def __init__(self, num:int = 0, color = NodeColor.NIL, left = None, right = None) -> None:
+class TreeType(Enum):
+    BINARY_SEARCH = 0
+    RED_BLACK = 1
+
+treeType = TreeType.RED_BLACK
+class Node(Generic[T]): 
+    def __init__(self, num:int = 0, color = NodeColor.RED, left: Optional["Node[T]"] = None, right: Optional["Node[T]"] = None) -> None:
         self.num = num
         self.color: NodeColor = color
-        self.left: (Node| None) = left
-        self.right: (Node|None) = right
+        self.left = left
+        self.right = right
+        self.parent: Optional['Node[T]'] = None
     def depth(self) -> int:
         if self is None:
             return 0
@@ -52,7 +61,7 @@ class Node(object):
             depth = max(depth, self.left.depth())
         return depth + 1
 
-    def insert(self, node = None ):
+    def insert_binary(self, node: Optional['Node[T]']):
         if node is None:
             return
         if node.num == self.num:
@@ -61,30 +70,77 @@ class Node(object):
         if node.num < self.num:
             if self.left is None:
                 self.left = node
+                node.parent = self
             else:
-                self.left.insert(node)
+                self.left.insert_binary(node)
         else:
             if self.right is None:
                 self.right = node
+                node.parent = self
             else:
-                self.right.insert(node)
+                self.right.insert_binary(node)
 
+
+    def isRightChild(self) -> bool:
+        return self.parent is not None and self.parent.right == self
+
+    def getGrandParent(self) -> Optional['Node[T]']:
+        return self.parent.parent if self.parent is not None else None
+
+    def getUncle(self) -> Optional['Node[T]'] :
+        if self.parent is None:
+            return None
+        grandParent = self.getGrandParent()
+        if grandParent is None:
+            return None
+        if self.parent.isRightChild():
+            return grandParent.left
+        else:
+            return grandParent.right 
+
+    def fix_red_black(self):
+        
+        if self is None:
+            return
+        print(f"fixing with z: ${self.num} color ${self.color}")
+        if self.parent is None:                   # case 1: node is the root
+            print("Case 1")
+            self.color = NodeColor.BLACK
+            return
+        if self.color == NodeColor.BLACK:
+            self.parent.fix_red_black()
+            return
+
+        grandParent = self.getGrandParent()
+        uncle = self.getUncle()
+        print({ 'self': self.num, 'parent': self.parent.num if self.parent is not None else None, 'uncle': uncle.num if uncle is not None else None, 'grandParent': grandParent.num if grandParent is not None else None})
+        if uncle is not None and uncle.color == NodeColor.RED: # case 2: Uncle color is RED
+            print("Case 2")
+            self.parent.color = NodeColor.BLACK
+            uncle.color = NodeColor.BLACK
+            if grandParent is not None: 
+                grandParent.color = NodeColor.RED
+            print({ 'self': self.color, 'parent': self.parent.color, 'uncle': uncle.color if uncle is not None else None, 'grandParent': grandParent.color if grandParent is not None else None})
+            self.parent.fix_red_black()
+            return
+
+    def insert(self, node: Optional['Node[T]'] = None ):
+        self.insert_binary(node)
+        if node is not None:
+            node.fix_red_black()
+        print("\n")
 
 root = None
-random = Random()
-root = Node(9)
-root.insert(Node(5, NodeColor.RED))
-root.insert(Node(15, NodeColor.RED))
-root.insert(Node(10))
+root = Node(9, color=NodeColor.BLACK)
 
-def update_state(num: (int|None) = None) -> bool:
+def update_state(num: (int|None) = None):
     global root, random
     if num is not None:
         if root is None:
             root = Node(num)
         else:
             root.insert(Node(num))
-    return num is not None and num < 50
+
 
 def draw_node(node: (Node|None), position: Vector2):
     if node == None:
