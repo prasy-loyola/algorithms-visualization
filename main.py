@@ -337,11 +337,11 @@ while not window_should_close():
         value += 1
     if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
         update_state(int(value))
-
     clear_background(GRAY)
 
     begin_mode_2d(camera)
-    draw_node(root,Vector2(int(WIDTH/2), int(HEIGHT/2)))
+    if root is not None:
+        draw_node(root,Vector2(int(WIDTH/2), int(HEIGHT/2)))
     end_mode_2d()
 
     end_drawing()
