@@ -1,7 +1,7 @@
 from enum import Enum
 import math
 from pyray import *
-from raylib import DEFAULT, KEY_R, MOUSE_BUTTON_LEFT, TEXT_SIZE
+from raylib import DEFAULT, KEY_R, KEY_Z, MOUSE_BUTTON_LEFT, TEXT_SIZE
 from typing import TypeVar, Optional, Generic
 
 # "Russian violet" hex="462255" r="70" g="34" b="85" />
@@ -23,8 +23,8 @@ NODE_COLOR_LINE = RUSSIAN_VIOLET
 BACKGROUND_COLOR = ULTRA_VIOLET
 
 
-WIDTH = 1000
-HEIGHT = 800
+WIDTH = 1900
+HEIGHT = 1080
 FONT_SIZE = 20
 TEXTBOX_SIZE = 30
 
@@ -272,20 +272,27 @@ class Node(Generic[T]):
 
     def insert(self, node: Optional['Node[T]'] = None ):
         self.insert_binary(node)
+        global treeType
         if node is not None:
-            node.fix_red_black()
+            if treeType == TreeType.RED_BLACK:
+                print("fixing red black tree")
+                node.fix_red_black()
+            else:
+                node.color = NodeColor.BLACK
         print("\n")
 
 root = None
-root = Node(1, color=NodeColor.BLACK)
-for i in range(1,10):
-    root.insert(Node(i))
+# root = Node(1, color=NodeColor.BLACK)
+# for i in range(1,10):
+#     root.insert(Node(i))
 
 def update_state(num: (int|None) = None):
-    global root, random
+    global root, random, treeType
     if num is not None:
         if root is None:
             root = Node(num)
+            if treeType == TreeType.RED_BLACK:
+                root.fix_red_black()
         else:
             root.insert(Node(num))
 
@@ -319,6 +326,8 @@ while not window_should_close():
         update_state()
 
     if is_key_down(KEY_R):
+        root = None
+    if is_key_down(KEY_Z):
         camera.zoom = 1.0
         camera.offset = Vector2(0,0)
         camera.target = Vector2(0,0)
@@ -337,12 +346,20 @@ while not window_should_close():
         value += 1
     if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
         update_state(int(value))
+    if treeType == TreeType.RED_BLACK:
+        if gui_button(Rectangle(540, 10, 230, 50), "RedBlack Tree") != 0:
+            treeType = TreeType.BINARY_SEARCH
+    elif treeType == TreeType.BINARY_SEARCH:
+        if gui_button(Rectangle(540, 10, 230, 50), "Binary Search Tree") != 0:
+            treeType = TreeType.RED_BLACK
     clear_background(GRAY)
 
     begin_mode_2d(camera)
     if root is not None:
         draw_node(root,Vector2(int(WIDTH/2), int(HEIGHT/2)))
     end_mode_2d()
+
+    draw_text("Press (Z) to reset zoom. (R) to reset tree", 20, HEIGHT - 50, 20, DARKGRAY)
 
     end_drawing()
 
