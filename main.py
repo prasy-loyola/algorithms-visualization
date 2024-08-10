@@ -2,7 +2,7 @@ from enum import Enum
 import math
 from pyray import *
 from raylib import DEFAULT, KEY_R, KEY_Z, MOUSE_BUTTON_LEFT, TEXT_SIZE
-from typing import TypeVar, Optional, Generic
+from typing import Callable, TypeVar, Optional, Generic
 
 # "Russian violet" hex="462255" r="70" g="34" b="85" />
 # "Alice Blue" hex="e1f2fe" r="225" g="242" b="254" />
@@ -78,20 +78,20 @@ class Node(DrawableGeneric[T]):
                 self.left = node
                 node.parent = self
             else:
-                self.left.insert_binary(node)
+                events.append(lambda : None if self.left is None else self.left.insert_binary(node))
         else:
             if self.right is None:
                 self.right = node
                 node.parent = self
             else:
-                self.right.insert_binary(node)
+                events.append(lambda : None if self.right is None else self.right.insert_binary(node))
 
     def __str__(self) -> str:
         return f"""{self.num}:{self.color}->{self.parent}"""
     
     def rightRotate(self):
         print(f"right rotate: {self}")
-        global root
+        global root, events
 
         parent = self.parent
         left = self.left 
@@ -148,11 +148,11 @@ class Node(DrawableGeneric[T]):
         
         print(f"after all rotation left: {left}, self: {self}")
         print(f"root: {root}")
-        self.fix_red_black()
+        events.append(lambda: self.fix_red_black())
         
     def leftRotate(self):
         print(f"left rotate: {self}")
-        global root
+        global root, events
 
         parent = self.parent
         right = self.right 
@@ -210,7 +210,7 @@ class Node(DrawableGeneric[T]):
 
         print(f"after all rotation right: {right}, self: {self}")
         print(f"root: {root}")
-        self.fix_red_black()
+        events.append(lambda:self.fix_red_black())
 
     def isRightChild(self) -> bool:
         return self.parent is not None and self.parent.right == self
@@ -239,10 +239,10 @@ class Node(DrawableGeneric[T]):
             self.color = NodeColor.BLACK
             return
         if self.color == NodeColor.BLACK:
-            self.parent.fix_red_black()
+            events.append(lambda: None if self.parent is None else self.parent.fix_red_black())
             return
         elif not self.parent.color == NodeColor.RED and (self.left is None or self.left.color == NodeColor.BLACK) and (self.right is None or self.right.color == NodeColor.BLACK):
-            self.parent.fix_red_black()
+            events.append(lambda: None if self.parent is None else self.parent.fix_red_black())
             return
 
         grandParent = self.getGrandParent()
@@ -255,7 +255,7 @@ class Node(DrawableGeneric[T]):
             if grandParent is not None: 
                 grandParent.color = NodeColor.RED
             print(f"After fixing case 2 {self}, uncle: {uncle}")
-            self.parent.fix_red_black()
+            events.append(lambda: None if self.parent is None else self.parent.fix_red_black())
             return
         else:                                               # case 3: Uncle color is BLACK
             print("Case 3")
@@ -264,9 +264,9 @@ class Node(DrawableGeneric[T]):
             if not self.isRightChild() == self.parent.isRightChild(): # case 3: Uncle color is BLACK (triangle)
                 print("Triangle")
                 if self.isRightChild():
-                    self.parent.leftRotate()
+                    events.append(lambda: None if self.parent is None else self.parent.leftRotate())
                 else:
-                    self.parent.rightRotate()
+                    events.append(lambda: None if self.parent is None else self.parent.rightRotate())
             else:
                 print("Line")
                 parent = self.parent
@@ -274,9 +274,9 @@ class Node(DrawableGeneric[T]):
                 grandParent.color = parent.color
                 parent.color = gpColor
                 if self.isRightChild():
-                    grandParent.leftRotate()
+                    events.append(lambda: None if grandParent is None else grandParent.leftRotate())
                 else:
-                    grandParent.rightRotate()
+                    events.append(lambda: None if grandParent is None else grandParent.rightRotate())
 
     def insert(self, node: Optional['Node[T]'] = None ):
         self.insert_binary(node)
@@ -284,10 +284,9 @@ class Node(DrawableGeneric[T]):
         if node is not None:
             if treeType == TreeType.RED_BLACK:
                 print("fixing red black tree")
-                node.fix_red_black()
+                events.append(lambda: node.fix_red_black())
             else:
                 node.color = NodeColor.BLACK
-        print("\n")
 
     def draw(self, at: Vector2):
         if self == None:
@@ -324,8 +323,17 @@ def update_state(num: (int|None) = None):
             root = Node(num)
             if treeType == TreeType.RED_BLACK:
                 root.fix_red_black()
+                events.append(root.fix_red_black)
         else:
-            root.insert(Node(num))
+            events.append(lambda: root.insert(Node(num)) if root is not None else None)
+    else:
+        if len(events) > 0:
+            event = events.pop(0)
+            print(f"running event {event}")
+            event()
+            
+events: list[Callable] = []
+
 
 
 camera = Camera2D(Vector2(0,0), Vector2(0,0), 0.0, 1.0)
@@ -333,7 +341,7 @@ value = 0
 editable = True
 gui_set_style(DEFAULT, TEXT_SIZE, FONT_SIZE)
 while not window_should_close():
-    if int(get_time()) % 10 == 0:
+    if int(get_time()) % 2 == 0:
         update_state()
 
     if is_key_down(KEY_R):
@@ -355,8 +363,12 @@ while not window_should_close():
         value -= 1
     if gui_button(Rectangle(100, 10, 40, 50), "+"):
         value += 1
-    if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
-        update_state(int(value))
+    if len(events) == 0:
+        if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
+            update_state(int(value))
+    else:
+        if gui_button(Rectangle(140, 10, 40, 50), "Next") != 0:
+            update_state()
     if treeType == TreeType.RED_BLACK:
         if gui_button(Rectangle(540, 10, 230, 50), "RedBlack Tree") != 0:
             treeType = TreeType.BINARY_SEARCH
