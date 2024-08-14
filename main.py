@@ -78,13 +78,13 @@ class Node(DrawableGeneric[T]):
                 self.left = node
                 node.parent = self
             else:
-                events.append(Event(f"Insert {node.num} into {self.left.num}", lambda : None if self.left is None else self.left.insert_binary(node)))
+                events.append(Event(self.left, f"Insert {node.num} into {self.left.num}", lambda : None if self.left is None else self.left.insert_binary(node)))
         else:
             if self.right is None:
                 self.right = node
                 node.parent = self
             else:
-                events.append(Event(f"Insert {node.num} into {self.right.num}", lambda : None if self.right is None else self.right.insert_binary(node)))
+                events.append(Event(self.right, f"Insert {node.num} into {self.right.num}", lambda : None if self.right is None else self.right.insert_binary(node)))
 
     def __str__(self) -> str:
         return f"""{self.num}:{self.color}->{self.parent}"""
@@ -137,7 +137,7 @@ class Node(DrawableGeneric[T]):
             parent.left = left
         left.parent = parent
         
-        events.append(Event(f"Fixing red/black for {self.num}", lambda: self.fix_red_black()))
+        events.append(Event(self, f"Fixing red/black for {self.num}", lambda: self.fix_red_black()))
         
     def leftRotate(self):
         global root, events
@@ -188,7 +188,7 @@ class Node(DrawableGeneric[T]):
             parent.left = right
         right.parent = parent
 
-        events.append(Event(f"Fixing red/black for {self.num}", lambda:self.fix_red_black()))
+        events.append(Event(self, f"Fixing red/black for {self.num}", lambda:self.fix_red_black()))
 
     def isRightChild(self) -> bool:
         return self.parent is not None and self.parent.right == self
@@ -214,46 +214,48 @@ class Node(DrawableGeneric[T]):
         if self is None:
             return
         if self.parent is None:                   # case 1: node is the root
-            events.append(Event(f"Case 1: Changed self: {self.num} color to Black", lambda: self.set_color(NodeColor.BLACK)))
+            if self.color is not NodeColor.BLACK:
+                events.append(Event(self, f"Case 1: Changed self color to Black", lambda: self.set_color(NodeColor.BLACK)))
             return
         if self.color == NodeColor.BLACK:
-            events.append(Event(f"Fixing red/black for {self.parent.num}",lambda: None if self.parent is None else self.parent.fix_red_black()))
+            events.append(Event(self.parent, f"Fixing red/black for {self.parent.num}",lambda: None if self.parent is None else self.parent.fix_red_black()))
             return
         elif not self.parent.color == NodeColor.RED and (self.left is None or self.left.color == NodeColor.BLACK) and (self.right is None or self.right.color == NodeColor.BLACK):
-            events.append(Event(f"Fixing red/black for {self.parent.num}", lambda: None if self.parent is None else self.parent.fix_red_black()))
+            events.append(Event(self.parent, f"Fixing red/black for {self.parent.num}", lambda: None if self.parent is None else self.parent.fix_red_black()))
             return
 
-        grandParent = self.getGrandParent()
+        grand_parent = self.getGrandParent()
         uncle = self.getUncle()
         if uncle is not None and uncle.color == NodeColor.RED: # case 2: Uncle color is RED
             def handle_case2():
                 if self.parent is not None:
                     self.parent.color = NodeColor.BLACK
                     uncle.color = NodeColor.BLACK
-                    if grandParent is not None: 
-                        grandParent.color = NodeColor.RED
-                    events.append(Event(f"Fixing red/black for {self.parent.num}", lambda: None if self.parent is None else self.parent.fix_red_black()))
-            events.append(Event(f"Case 2: Set parent: {self.parent.num} and uncle: {uncle.num} to BLACK.", handle_case2))
+                    if grand_parent is not None: 
+                        grand_parent.color = NodeColor.RED
+                    events.append(Event(self.parent, f"Fixing red/black for {self.parent.num}", lambda: None if self.parent is None else self.parent.fix_red_black()))
+            grand_parent_message = f" grandParent: {grand_parent.num}" if grand_parent is not None else ""
+            events.append(Event(self, f"Case 2: Set parent: {self.parent.num} and uncle: {uncle.num} to BLACK." + grand_parent_message, handle_case2))
             return
         else:                                               # case 3: Uncle color is BLACK
-            if grandParent is None:
+            if grand_parent is None:
                 return
             if not self.isRightChild() == self.parent.isRightChild(): # case 3: Uncle color is BLACK (triangle)
                 if self.isRightChild():
-                    events.append(Event(f"Case3 Triangle: Left Rotate parent: {self.parent.num}", lambda: None if self.parent is None else self.parent.leftRotate()))
+                    events.append(Event(self, f"Case3 Triangle: Left Rotate parent: {self.parent.num}", lambda: None if self.parent is None else self.parent.leftRotate()))
                 else:
-                    events.append(Event(f"Case3 Triangle: Right Rotate parent: {self.parent.num}", lambda: None if self.parent is None else self.parent.rightRotate()))
+                    events.append(Event(self, f"Case3 Triangle: Right Rotate parent: {self.parent.num}", lambda: None if self.parent is None else self.parent.rightRotate()))
             else:
                 parent = self.parent
-                gpColor = grandParent.color
-                grandParent.color = parent.color
+                gpColor = grand_parent.color
+                grand_parent.color = parent.color
                 parent.color = gpColor
                 if self.isRightChild():
-                    events.append(Event(f"Case3 Line: Left Rotate Grand Parent: {grandParent.num}", lambda: None if grandParent is None else grandParent.leftRotate()))
+                    events.append(Event(self, f"Case3 Line: Left Rotate Grand Parent: {grand_parent.num}", lambda: None if grand_parent is None else grand_parent.leftRotate()))
                 else:
-                    events.append(Event(f"Case3 Line: Right Rotate Grand Parent: {grandParent.num}", lambda: None if grandParent is None else grandParent.rightRotate()))
+                    events.append(Event(self, f"Case3 Line: Right Rotate Grand Parent: {grand_parent.num}", lambda: None if grand_parent is None else grand_parent.rightRotate()))
 
-    def draw(self, at: Vector2):
+    def draw(self, at: Vector2, active: Optional['Node[T]'] = None):
         if self == None:
             return
         gap = 80
@@ -268,19 +270,22 @@ class Node(DrawableGeneric[T]):
             draw_line_ex(at, right_position, 2, NODE_COLOR_LINE)
         text_size = measure_text(str(self.num), FONT_SIZE)
         node_color = NODE_COLOR_RED if self.color == NodeColor.RED else NODE_COLOR_BLACK
+        if active == self:
+            draw_circle(int(at.x), int(at.y), 23, LIGHT_GREEN)
         draw_circle(int(at.x), int(at.y), 20, node_color)
+
         draw_text(str(self.num), int(at.x - text_size/2), int(at.y - FONT_SIZE/2.5), FONT_SIZE, NODE_COLOR_TEXT)
 
         if self.left is not None:
-            self.left.draw(left_position)
+            self.left.draw(left_position, active)
         if self.right is not None:
-            self.right.draw(right_position)
+            self.right.draw(right_position, active)
 
     def insert(self, node: Optional['Node[T]'] = None ):
         global treeType
         if node is not None:
             if treeType == TreeType.RED_BLACK:
-                events.append(Event(f"Fixing red/black for {node.num}", lambda: node.fix_red_black()))
+                events.append(Event(node, f"Fixing red/black for {node.num}", lambda: node.fix_red_black()))
             else:
                 node.color = NodeColor.BLACK
         self.insert_binary(node)
@@ -291,16 +296,17 @@ def update_state(num: (int|None) = None):
         if root is None:
             root = Node(num)
             if treeType == TreeType.RED_BLACK:
-                events.append(Event(f"Fixing red/black for {root.num}",root.fix_red_black))
+                events.append(Event(root, f"Fixing red/black for {root.num}",root.fix_red_black))
         else:
-            events.append(Event(f"Inserting {num} into {root.num}", lambda: root.insert(Node(num)) if root is not None else None))
+            events.append(Event(root, f"Inserting {num} into {root.num}", lambda: root.insert(Node(num)) if root is not None else None))
     elif len(events) > 0:
         event = events.pop()
         event.func()
             
 
 class Event:
-    def __init__(self, message: str, func: Callable):
+    def __init__(self, node: Node, message: str, func: Callable):
+        self.node = node
         self.message = message
         self.func = func
 
@@ -315,15 +321,16 @@ gui_set_style(DEFAULT, TEXT_SIZE, FONT_SIZE)
 last_updated_time = int(get_time())
 last_paused_time = get_time()
 while not window_should_close():
-    if not paused and int(get_time()) != last_updated_time and int(get_time()) % 2 == 0:
-        last_updated_time = int(get_time())
-        update_state()
-
-    if is_key_down(KEY_P) and get_time() - last_paused_time > 0.1 :
+    if is_key_down(KEY_P) and get_time() - last_paused_time > 0.3 :
         paused = not paused
         last_paused_time = get_time()
+    if not paused and get_time() - last_updated_time > 0.5:
+        last_updated_time = get_time()
+        update_state()
+
     if is_key_down(KEY_R):
         root = None
+        events = []
     if is_key_down(KEY_Z):
         camera.zoom = 1.0
         camera.offset = Vector2(0,0)
@@ -357,7 +364,7 @@ while not window_should_close():
 
     begin_mode_2d(camera)
     if root is not None:
-        root.draw(Vector2(int(WIDTH/2), int(HEIGHT/2)))
+        root.draw(Vector2(int(WIDTH/2), int(HEIGHT/2)), events[-1].node if len(events) > 0 else None)
     end_mode_2d()
     if len(events) > 0:
         draw_text(("|Paused| " if paused else "") + "Next step: " + events[-1].message, 10, 80, 20, DARKGRAY)
