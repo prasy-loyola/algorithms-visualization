@@ -24,7 +24,7 @@ BACKGROUND_COLOR = ULTRA_VIOLET
 
 
 WIDTH = 1900
-HEIGHT = 1080
+HEIGHT = 1020
 FONT_SIZE = 20
 TEXTBOX_SIZE = 30
 
@@ -41,8 +41,16 @@ class TreeType(Enum):
     BINARY_SEARCH = 0
     RED_BLACK = 1
 
-treeType = TreeType.RED_BLACK
-class Node(Generic[T]): 
+class Drawable(object):
+    def draw(self, at: Vector2):
+        pass
+
+class DrawableGeneric(Generic[T]):
+    def draw(self, at: Vector2):
+        pass
+
+treeType = TreeType.BINARY_SEARCH
+class Node(DrawableGeneric[T]): 
     def __init__(self, num:int = 0, color = NodeColor.RED, left: Optional["Node[T]"] = None, right: Optional["Node[T]"] = None) -> None:
         self.num = num
         self.color: NodeColor = color
@@ -281,6 +289,29 @@ class Node(Generic[T]):
                 node.color = NodeColor.BLACK
         print("\n")
 
+    def draw(self, at: Vector2):
+        if self == None:
+            return
+        gap = 80
+
+        depth = self.depth()
+        left_position = Vector2(at.x - (gap * depth * math.tanh(math.pi * 0.03 * depth )) , at.y + gap)
+        right_position = Vector2(at.x + (gap * depth * math.tanh(math.pi * 0.03 * depth)), at.y + gap)
+
+        if self.left is not None:
+            draw_line_ex(at, left_position, 2, NODE_COLOR_LINE)
+        if self.right is not None:
+            draw_line_ex(at, right_position, 2, NODE_COLOR_LINE)
+        text_size = measure_text(str(self.num), FONT_SIZE)
+        node_color = NODE_COLOR_RED if self.color == NodeColor.RED else NODE_COLOR_BLACK
+        draw_circle(int(at.x), int(at.y), 20, node_color)
+        draw_text(str(self.num), int(at.x - text_size/2), int(at.y - FONT_SIZE/2.5), FONT_SIZE, NODE_COLOR_TEXT)
+
+        if self.left is not None:
+            self.left.draw(left_position)
+        if self.right is not None:
+            self.right.draw(right_position)
+
 root = None
 # root = Node(1, color=NodeColor.BLACK)
 # for i in range(1,10):
@@ -296,26 +327,6 @@ def update_state(num: (int|None) = None):
         else:
             root.insert(Node(num))
 
-def draw_node(node: (Node|None), position: Vector2):
-    if node == None:
-        return
-    gap = 80
-
-    depth = node.depth()
-    left_position = Vector2(position.x - (gap * depth * math.tanh(math.pi * 0.03 * depth )) , position.y + gap)
-    right_position = Vector2(position.x + (gap * depth * math.tanh(math.pi * 0.03 * depth)), position.y + gap)
-
-    if node.left is not None:
-        draw_line_ex(position, left_position, 2, NODE_COLOR_LINE)
-    if node.right is not None:
-        draw_line_ex(position, right_position, 2, NODE_COLOR_LINE)
-    text_size = measure_text(str(node.num), FONT_SIZE)
-    node_color = NODE_COLOR_RED if node.color == NodeColor.RED else NODE_COLOR_BLACK
-    draw_circle(int(position.x), int(position.y), 20, node_color)
-    draw_text(str(node.num), int(position.x - text_size/2), int(position.y - FONT_SIZE/2.5), FONT_SIZE, NODE_COLOR_TEXT)
-
-    draw_node(node.left, left_position)
-    draw_node(node.right, right_position)
 
 camera = Camera2D(Vector2(0,0), Vector2(0,0), 0.0, 1.0)
 value = 0
@@ -356,7 +367,7 @@ while not window_should_close():
 
     begin_mode_2d(camera)
     if root is not None:
-        draw_node(root,Vector2(int(WIDTH/2), int(HEIGHT/2)))
+        root.draw(Vector2(int(WIDTH/2), int(HEIGHT/2)))
     end_mode_2d()
 
     draw_text("Press (Z) to reset zoom. (R) to reset tree", 20, HEIGHT - 50, 20, DARKGRAY)
