@@ -365,7 +365,7 @@ while not window_should_close():
         draw_text("|Paused| ", 10, 80, 20, DARKGRAY)
 
 
-    draw_text("Press (Z) to reset zoom. (R) to reset tree", 20, HEIGHT - 50, 20, DARKGRAY)
+    draw_text("Press (Z) to reset zoom. (R) to reset tree. (P) to pause or unpause", 20, HEIGHT - 50, 20, DARKGRAY)
 
     end_drawing()
 
