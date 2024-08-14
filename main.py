@@ -297,6 +297,8 @@ def update_state(num: (int|None) = None):
             root = Node(num)
             if treeType == TreeType.RED_BLACK:
                 events.append(Event(root, f"Fixing red/black for {root.num}",root.fix_red_black))
+            else:
+                root.color = NodeColor.BLACK
         else:
             events.append(Event(root, f"Inserting {num} into {root.num}", lambda: root.insert(Node(num)) if root is not None else None))
     elif len(events) > 0:
