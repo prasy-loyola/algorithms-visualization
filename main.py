@@ -344,7 +344,7 @@ while not window_should_close():
     if len(events) == 0:
         if gui_button(Rectangle(140, 10, 60, 50), "Add") != 0:
             update_state(int(value))
-    if paused:
+    if paused and len(events) > 0:
         if gui_button(Rectangle(240, 10, 120, 50), "Next Step") != 0:
             update_state()
     if treeType == TreeType.RED_BLACK:
