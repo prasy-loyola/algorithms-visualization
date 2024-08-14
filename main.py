@@ -1,7 +1,7 @@
 from enum import Enum
 import math
 from pyray import *
-from raylib import DEFAULT, KEY_R, KEY_Z, MOUSE_BUTTON_LEFT, TEXT_SIZE
+from raylib import DEFAULT, KEY_P, KEY_R, KEY_Z, MOUSE_BUTTON_LEFT, TEXT_SIZE
 from typing import Callable, TypeVar, Optional, Generic
 
 # "Russian violet" hex="462255" r="70" g="34" b="85" />
@@ -78,19 +78,18 @@ class Node(DrawableGeneric[T]):
                 self.left = node
                 node.parent = self
             else:
-                events.append(lambda : None if self.left is None else self.left.insert_binary(node))
+                events.append(Event(f"Insert {node.num} into {self.left.num}", lambda : None if self.left is None else self.left.insert_binary(node)))
         else:
             if self.right is None:
                 self.right = node
                 node.parent = self
             else:
-                events.append(lambda : None if self.right is None else self.right.insert_binary(node))
+                events.append(Event(f"Insert {node.num} into {self.right.num}", lambda : None if self.right is None else self.right.insert_binary(node)))
 
     def __str__(self) -> str:
         return f"""{self.num}:{self.color}->{self.parent}"""
     
     def rightRotate(self):
-        print(f"right rotate: {self}")
         global root, events
 
         parent = self.parent
@@ -98,9 +97,7 @@ class Node(DrawableGeneric[T]):
         isRoot = self.parent is None
         isRightChild = self.isRightChild()
 
-        print(f"isRoot {isRoot}")
         if left is None: 
-            print(f"root: {root}")
             return
         
         leftsRightChild = left.right
@@ -109,7 +106,6 @@ class Node(DrawableGeneric[T]):
         # Cut self and left child
         self.right = None
         left.parent = None
-        print(f"After cutting self {self} and right {left}")
 
         self.parent = None
         if parent is not None:
@@ -121,24 +117,19 @@ class Node(DrawableGeneric[T]):
         left.right = None
         if leftsRightChild is not None:
             leftsRightChild.parent = None
-        print(f"After cutting left: {left} and left's right {leftsRightChild}")
 
         # Setting rightsRight child to the right
         self.left = leftsRightChild
         if leftsRightChild is not None:
             leftsRightChild.parent = self
 
-        print(f"After Setting self.right to leftsRightChild: {leftsRightChild} {self}")
-
         # Set up right as parent for self
         left.right = self
         self.parent = left
 
-        print(f"After Setting self as lefts right, self:{self} right: {left}")
         # Set up the rightChild with self's parent
         if isRoot or parent is None:
             root = left
-            print(f"root: {root}")
             return
         if isRightChild:
             parent.right = left
@@ -146,12 +137,9 @@ class Node(DrawableGeneric[T]):
             parent.left = left
         left.parent = parent
         
-        print(f"after all rotation left: {left}, self: {self}")
-        print(f"root: {root}")
-        events.append(lambda: self.fix_red_black())
+        events.append(Event(f"Fixing red/black for {self.num}", lambda: self.fix_red_black()))
         
     def leftRotate(self):
-        print(f"left rotate: {self}")
         global root, events
 
         parent = self.parent
@@ -159,9 +147,7 @@ class Node(DrawableGeneric[T]):
         isRoot = self.parent is None
         isRightChild = self.isRightChild()
 
-        print(f"isRoot {isRoot}")
         if right is None: 
-            print(f"root: {root}")
             return
         
         rightsLeftChild = right.left
@@ -177,30 +163,24 @@ class Node(DrawableGeneric[T]):
                 parent.right = None
             else:
                 parent.left = None
-        print(f"After cutting self {self} and right {right}")
 
         # cut rightChild and its right child
         right.left = None
         if rightsLeftChild is not None:
             rightsLeftChild.parent = None
-        print(f"After cutting right {right} and right's left {rightsLeftChild}")
 
         # Setting rightsRight child to the right
         self.right = rightsLeftChild
         if rightsLeftChild is not None:
             rightsLeftChild.parent = self
 
-        print(f"Setting self.right to rightsLeftChild: {rightsLeftChild} {self}")
-
         # Set up right as parent for self
         right.left = self
         self.parent = right
 
-        print(f"Setting self as right's left, self:{self} right: {right}")
         # Set up the rightChild with self's parent
         if isRoot or parent is None:
             root = right
-            print(f"root: {root}")
             return
         if isRightChild:
             parent.right = right
@@ -208,9 +188,7 @@ class Node(DrawableGeneric[T]):
             parent.left = right
         right.parent = parent
 
-        print(f"after all rotation right: {right}, self: {self}")
-        print(f"root: {root}")
-        events.append(lambda:self.fix_red_black())
+        events.append(Event(f"Fixing red/black for {self.num}", lambda:self.fix_red_black()))
 
     def isRightChild(self) -> bool:
         return self.parent is not None and self.parent.right == self
@@ -229,64 +207,51 @@ class Node(DrawableGeneric[T]):
         else:
             return grandParent.right 
 
+    def set_color(self, color: NodeColor):
+        self.color = color
     def fix_red_black(self):
 
-        print(f"fixup {self}")
         if self is None:
             return
         if self.parent is None:                   # case 1: node is the root
-            print("Case 1")
-            self.color = NodeColor.BLACK
+            events.append(Event(f"Case 1: Changed self: {self.num} color to Black", lambda: self.set_color(NodeColor.BLACK)))
             return
         if self.color == NodeColor.BLACK:
-            events.append(lambda: None if self.parent is None else self.parent.fix_red_black())
+            events.append(Event(f"Fixing red/black for {self.parent.num}",lambda: None if self.parent is None else self.parent.fix_red_black()))
             return
         elif not self.parent.color == NodeColor.RED and (self.left is None or self.left.color == NodeColor.BLACK) and (self.right is None or self.right.color == NodeColor.BLACK):
-            events.append(lambda: None if self.parent is None else self.parent.fix_red_black())
+            events.append(Event(f"Fixing red/black for {self.parent.num}", lambda: None if self.parent is None else self.parent.fix_red_black()))
             return
 
         grandParent = self.getGrandParent()
         uncle = self.getUncle()
-        print(f"checking conditions {self}, uncle: {uncle}")
         if uncle is not None and uncle.color == NodeColor.RED: # case 2: Uncle color is RED
-            print("Case 2")
-            self.parent.color = NodeColor.BLACK
-            uncle.color = NodeColor.BLACK
-            if grandParent is not None: 
-                grandParent.color = NodeColor.RED
-            print(f"After fixing case 2 {self}, uncle: {uncle}")
-            events.append(lambda: None if self.parent is None else self.parent.fix_red_black())
+            def handle_case2():
+                if self.parent is not None:
+                    self.parent.color = NodeColor.BLACK
+                    uncle.color = NodeColor.BLACK
+                    if grandParent is not None: 
+                        grandParent.color = NodeColor.RED
+                    events.append(Event(f"Fixing red/black for {self.parent.num}", lambda: None if self.parent is None else self.parent.fix_red_black()))
+            events.append(Event(f"Case 2: Set parent: {self.parent.num} and uncle: {uncle.num} to BLACK.", handle_case2))
             return
         else:                                               # case 3: Uncle color is BLACK
-            print("Case 3")
             if grandParent is None:
                 return
             if not self.isRightChild() == self.parent.isRightChild(): # case 3: Uncle color is BLACK (triangle)
-                print("Triangle")
                 if self.isRightChild():
-                    events.append(lambda: None if self.parent is None else self.parent.leftRotate())
+                    events.append(Event(f"Case3 Triangle: Left Rotate parent: {self.parent.num}", lambda: None if self.parent is None else self.parent.leftRotate()))
                 else:
-                    events.append(lambda: None if self.parent is None else self.parent.rightRotate())
+                    events.append(Event(f"Case3 Triangle: Right Rotate parent: {self.parent.num}", lambda: None if self.parent is None else self.parent.rightRotate()))
             else:
-                print("Line")
                 parent = self.parent
                 gpColor = grandParent.color
                 grandParent.color = parent.color
                 parent.color = gpColor
                 if self.isRightChild():
-                    events.append(lambda: None if grandParent is None else grandParent.leftRotate())
+                    events.append(Event(f"Case3 Line: Left Rotate Grand Parent: {grandParent.num}", lambda: None if grandParent is None else grandParent.leftRotate()))
                 else:
-                    events.append(lambda: None if grandParent is None else grandParent.rightRotate())
-
-    def insert(self, node: Optional['Node[T]'] = None ):
-        self.insert_binary(node)
-        global treeType
-        if node is not None:
-            if treeType == TreeType.RED_BLACK:
-                print("fixing red black tree")
-                events.append(lambda: node.fix_red_black())
-            else:
-                node.color = NodeColor.BLACK
+                    events.append(Event(f"Case3 Line: Right Rotate Grand Parent: {grandParent.num}", lambda: None if grandParent is None else grandParent.rightRotate()))
 
     def draw(self, at: Vector2):
         if self == None:
@@ -311,39 +276,52 @@ class Node(DrawableGeneric[T]):
         if self.right is not None:
             self.right.draw(right_position)
 
-root = None
-# root = Node(1, color=NodeColor.BLACK)
-# for i in range(1,10):
-#     root.insert(Node(i))
+    def insert(self, node: Optional['Node[T]'] = None ):
+        global treeType
+        if node is not None:
+            if treeType == TreeType.RED_BLACK:
+                events.append(Event(f"Fixing red/black for {node.num}", lambda: node.fix_red_black()))
+            else:
+                node.color = NodeColor.BLACK
+        self.insert_binary(node)
 
 def update_state(num: (int|None) = None):
-    global root, random, treeType
+    global root, random, treeType, events
     if num is not None:
         if root is None:
             root = Node(num)
             if treeType == TreeType.RED_BLACK:
-                root.fix_red_black()
-                events.append(root.fix_red_black)
+                events.append(Event(f"Fixing red/black for {root.num}",root.fix_red_black))
         else:
-            events.append(lambda: root.insert(Node(num)) if root is not None else None)
-    else:
-        if len(events) > 0:
-            event = events.pop(0)
-            print(f"running event {event}")
-            event()
+            events.append(Event(f"Inserting {num} into {root.num}", lambda: root.insert(Node(num)) if root is not None else None))
+    elif len(events) > 0:
+        event = events.pop()
+        event.func()
             
-events: list[Callable] = []
 
+class Event:
+    def __init__(self, message: str, func: Callable):
+        self.message = message
+        self.func = func
+
+root = None
+events: list[Event] = []
 
 
 camera = Camera2D(Vector2(0,0), Vector2(0,0), 0.0, 1.0)
 value = 0
-editable = True
+paused = True
 gui_set_style(DEFAULT, TEXT_SIZE, FONT_SIZE)
+last_updated_time = int(get_time())
+last_paused_time = get_time()
 while not window_should_close():
-    if int(get_time()) % 2 == 0:
+    if not paused and int(get_time()) != last_updated_time and int(get_time()) % 2 == 0:
+        last_updated_time = int(get_time())
         update_state()
 
+    if is_key_down(KEY_P) and get_time() - last_paused_time > 0.1 :
+        paused = not paused
+        last_paused_time = get_time()
     if is_key_down(KEY_R):
         root = None
     if is_key_down(KEY_Z):
@@ -364,10 +342,10 @@ while not window_should_close():
     if gui_button(Rectangle(100, 10, 40, 50), "+"):
         value += 1
     if len(events) == 0:
-        if gui_button(Rectangle(140, 10, 40, 50), "Add") != 0:
+        if gui_button(Rectangle(140, 10, 60, 50), "Add") != 0:
             update_state(int(value))
-    else:
-        if gui_button(Rectangle(140, 10, 40, 50), "Next") != 0:
+    if paused:
+        if gui_button(Rectangle(240, 10, 120, 50), "Next Step") != 0:
             update_state()
     if treeType == TreeType.RED_BLACK:
         if gui_button(Rectangle(540, 10, 230, 50), "RedBlack Tree") != 0:
@@ -381,6 +359,11 @@ while not window_should_close():
     if root is not None:
         root.draw(Vector2(int(WIDTH/2), int(HEIGHT/2)))
     end_mode_2d()
+    if len(events) > 0:
+        draw_text(("|Paused| " if paused else "") + "Next step: " + events[-1].message, 10, 80, 20, DARKGRAY)
+    elif paused:
+        draw_text("|Paused| ", 10, 80, 20, DARKGRAY)
+
 
     draw_text("Press (Z) to reset zoom. (R) to reset tree", 20, HEIGHT - 50, 20, DARKGRAY)
 
